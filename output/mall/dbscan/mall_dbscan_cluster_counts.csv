@@ -1,0 +1,4 @@
+Cluster,Jumlah_Anggota,Persentase(%),Tipe
+-1,1,0.5,Noise
+0,87,43.5,Cluster
+1,112,56.0,Cluster

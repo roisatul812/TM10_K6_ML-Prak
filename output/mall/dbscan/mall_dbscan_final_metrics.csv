@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Epsilon,Min_Samples,Smallest_Cluster_Size,Largest_Cluster_Size,Noise_Count,Noise_Percentage,Selection_Criteria,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
+Mall Customers,DBSCAN,2,1.4,6,87,112,1,0.005,Epsilon terbesar pada grid yang mempertahankan >=2 cluster; min_samples=jumlah fitur+1.,0.17871623964397484,2.2717394551947385,33.519598496380524,199
