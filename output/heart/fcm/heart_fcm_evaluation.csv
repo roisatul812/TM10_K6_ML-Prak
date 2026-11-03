@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
+Heart Disease,FCM,2,0.1755116674184639,2.01202980054385,210.5200184870579,918

@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Fuzziness,Error_Tolerance,Max_Iter,Objective_Function,Iterations,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
+Heart Disease,FCM,2,2,1e-05,1000,3630.654210202473,350,0.1755116674184639,2.01202980054385,210.5200184870579,918

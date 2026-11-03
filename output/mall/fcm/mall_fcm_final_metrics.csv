@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Fuzziness,Error_Tolerance,Max_Iter,Objective_Function,Iterations,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
+Mall Customers,FCM,4,2,1e-05,1000,162.86259586006992,91,0.3191191479846512,1.1655539837549287,84.65246428462868,200
