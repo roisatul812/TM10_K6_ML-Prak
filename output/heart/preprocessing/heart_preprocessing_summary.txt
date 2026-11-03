@@ -1,0 +1,10 @@
+PREPROCESSING HEART DISEASE
+========================================
+Jumlah data: 918
+Fitur numerik: ['Age', 'RestingBP', 'Cholesterol', 'MaxHR', 'Oldpeak']
+Fitur kategorikal: ['Sex', 'ChestPainType', 'FastingBS', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
+Jumlah fitur setelah encoding: 21
+Target HeartDisease tidak digunakan untuk clustering.
+Outlier dideteksi menggunakan IQR dan tidak dihapus.
+Numerik menggunakan StandardScaler.
+Kategorikal menggunakan OneHotEncoder.

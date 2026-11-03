@@ -1,0 +1,10 @@
+PREPROCESSING MALL CUSTOMERS
+========================================
+Jumlah data: 200
+Fitur numerik: ['Age', 'Annual Income (k$)', 'Spending Score (1-100)']
+Fitur kategorikal: ['Gender']
+Jumlah fitur setelah encoding: 5
+CustomerID tidak digunakan untuk clustering.
+Outlier dideteksi menggunakan IQR dan tidak dihapus.
+Numerik menggunakan StandardScaler.
+Kategorikal menggunakan OneHotEncoder.

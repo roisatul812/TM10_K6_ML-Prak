@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Inertia,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Heart Disease,K-Means,2,5903.558082788199,0.17516897152025288,2.0092634904794404,210.72874992615277

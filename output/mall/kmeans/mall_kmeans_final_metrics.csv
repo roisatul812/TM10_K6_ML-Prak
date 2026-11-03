@@ -1,0 +1,2 @@
+Dataset,Metode,Jumlah_Cluster,Inertia,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Mall Customers,K-Means,4,303.2874941784071,0.31947018640603897,1.179273488509047,85.14848411505213
