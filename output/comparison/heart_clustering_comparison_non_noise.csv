@@ -1,0 +1,4 @@
+Dataset,Algorithm,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Heart Disease,K-Means,Subset baris non-noise DBSCAN yang sama,779,2,"375,404",0,0.0,0.19662635692185043,1.85279457375916,216.13562234509934
+Heart Disease,FCM,Subset baris non-noise DBSCAN yang sama,779,2,"367,412",0,0.0,0.19680763570662532,1.8510838087924586,215.9584316523044
+Heart Disease,DBSCAN,Subset baris non-noise DBSCAN yang sama,779,2,"778,1",139,0.1514161220043573,0.0956885009413746,0.8092526576461662,1.4694904808230003
