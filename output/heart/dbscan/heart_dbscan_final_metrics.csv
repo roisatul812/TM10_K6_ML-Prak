@@ -1,0 +1,2 @@
+Dataset,Metode,Metric,Epsilon,Min_Samples,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Jumlah_Data,PCA_Digunakan_Untuk_Clustering,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi,Catatan_Evaluasi
+Heart Disease,DBSCAN,euclidean,2.0,5,2,"1,778",139,0.1514161220043573,918,False,0.0956885009413746,0.8092526576461662,1.4694904808230003,779,Metrik dihitung hanya pada data non-noise (label -1 dikeluarkan).
