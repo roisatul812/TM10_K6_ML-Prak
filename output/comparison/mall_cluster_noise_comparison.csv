@@ -1,4 +1,4 @@
 Dataset,Algorithm,Jumlah_Cluster,Cluster_Sizes,Jumlah_Noise,Persentase_Noise,Jumlah_Data
 Mall Customers,K-Means,4,"65,57,38,40",0,0.0,200
 Mall Customers,FCM,4,"35,63,62,40",0,0.0,200
-Mall Customers,DBSCAN,2,"87,112",1,0.005,200
+Mall Customers,DBSCAN,2,"137,35",28,0.14,200

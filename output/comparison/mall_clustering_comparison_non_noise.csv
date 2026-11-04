@@ -1,4 +1,4 @@
-Dataset,Algorithm,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Silhouette,Davies_Bouldin,Calinski_Harabasz
-Mall Customers,K-Means,Subset baris non-noise DBSCAN yang sama,199,4,"65,57,38,39",0,0.0,0.3188855440360629,1.1810911686526064,84.54727578483669
-Mall Customers,FCM,Subset baris non-noise DBSCAN yang sama,199,4,"35,63,62,39",0,0.0,0.318326457222937,1.1673914597850785,84.0468722325272
-Mall Customers,DBSCAN,Subset baris non-noise DBSCAN yang sama,199,2,"87,112",1,0.005,0.17871623964397484,2.2717394551947385,33.519598496380524
+Dataset,Algorithm,Ruang_Fitur,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Valid,Catatan_Validitas,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Mall Customers,K-Means,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,172,4,"62,52,23,35",0,0.0,True,-,0.3241135630457314,1.2058875477039237,77.15463507092954
+Mall Customers,FCM,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,172,4,"20,61,56,35",0,0.0,True,-,0.32325977228367664,1.1778695737617744,77.37794561923826
+Mall Customers,DBSCAN,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,172,2,"137,35",28,0.14,True,-,0.22060112202090845,1.2889214784271052,43.459616049070185

@@ -1,0 +1,10 @@
+Dataset,Ruang_Fitur,Algorithm,Valid,Jumlah_Kemenangan_Metrik(dari_3)
+Mall Customers,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),K-Means,True,2
+Mall Customers,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),FCM,True,1
+Mall Customers,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),DBSCAN,True,0
+Mall Customers,Fitur numerik saja (ruang DBSCAN),K-Means,True,2
+Mall Customers,Fitur numerik saja (ruang DBSCAN),FCM,True,1
+Mall Customers,Fitur numerik saja (ruang DBSCAN),DBSCAN,True,0
+Heart Disease,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),K-Means,True,2
+Heart Disease,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),FCM,True,1
+Heart Disease,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),DBSCAN,False,0

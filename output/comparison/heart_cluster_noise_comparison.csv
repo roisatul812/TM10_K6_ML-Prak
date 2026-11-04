@@ -1,4 +1,4 @@
 Dataset,Algorithm,Jumlah_Cluster,Cluster_Sizes,Jumlah_Noise,Persentase_Noise,Jumlah_Data
 Heart Disease,K-Means,2,"469,449",0,0.0,918
 Heart Disease,FCM,2,"460,458",0,0.0,918
-Heart Disease,DBSCAN,2,"778,1",139,0.1514161220043573,918
+Heart Disease,DBSCAN,2,"906,4",8,0.008714596949891068,918

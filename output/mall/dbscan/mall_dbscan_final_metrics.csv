@@ -1,2 +1,2 @@
-Dataset,Metode,Jumlah_Cluster,Epsilon,Min_Samples,Smallest_Cluster_Size,Largest_Cluster_Size,Noise_Count,Noise_Percentage,Selection_Criteria,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
-Mall Customers,DBSCAN,2,1.4,6,87,112,1,0.005,Epsilon terbesar pada grid yang mempertahankan >=2 cluster; min_samples=jumlah fitur+1.,0.17871623964397484,2.2717394551947385,33.519598496380524,199
+Dataset,Metode,Fitur_Digunakan,Jumlah_Cluster,Epsilon,Min_Samples,Smallest_Cluster_Size,Largest_Cluster_Size,Noise_Count,Noise_Percentage,Selection_Criteria,Status_Kriteria,Silhouette,Davies_Bouldin,Calinski_Harabasz,Jumlah_Data_Evaluasi
+Mall Customers,DBSCAN,"Age, Annual Income, Spending Score (terstandar; tanpa Gender)",2,0.6,5,35,137,28,0.14,">= 2 cluster, noise <= 15%, tiap cluster >= 5% data; dipilih Silhouette tertinggi.",Memenuhi kriteria,0.2730470532970596,1.0204018249036613,54.421388470126566,172

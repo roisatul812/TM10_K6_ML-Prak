@@ -4,9 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
-    calinski_harabasz_score,
-    davies_bouldin_score,
-    silhouette_score,
+    adjusted_rand_score, calinski_harabasz_score, davies_bouldin_score, silhouette_score,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -14,16 +12,22 @@ ROOT_DIR = BASE_DIR.parent
 OUTPUT_DIR = ROOT_DIR / "output" / "comparison"
 ALGORITHMS = ["K-Means", "FCM", "DBSCAN"]
 METRICS = ["Silhouette", "Davies_Bouldin", "Calinski_Harabasz"]
+DIRECTIONS = {"Silhouette": "max", "Davies_Bouldin": "min", "Calinski_Harabasz": "max"}
+MALL_NUMERIC = ["Age", "Annual Income (k$)", "Spending Score (1-100)"]
+
+MAX_NOISE_PCT = 15.0
+MIN_CLUSTER_PCT = 5.0
+MIN_CLUSTERS = 2
+COLORS = {"K-Means": "#4C72B0", "FCM": "#55A868", "DBSCAN": "#C44E52"}
 
 
-def compute_metrics(X: np.ndarray, labels: np.ndarray) -> dict:
-    unique_labels = np.unique(labels)
-    if len(unique_labels) < 2 or len(labels) <= len(unique_labels):
-        return {
-            "Silhouette": np.nan,
-            "Davies_Bouldin": np.nan,
-            "Calinski_Harabasz": np.nan,
-        }
+def title_of(ds):
+    return "Mall Customers" if ds == "mall" else "Heart Disease"
+
+
+def compute_metrics(X, labels):
+    if len(np.unique(labels)) < 2 or len(labels) <= len(np.unique(labels)):
+        return {m: np.nan for m in METRICS}
     return {
         "Silhouette": float(silhouette_score(X, labels)),
         "Davies_Bouldin": float(davies_bouldin_score(X, labels)),
@@ -31,364 +35,215 @@ def compute_metrics(X: np.ndarray, labels: np.ndarray) -> dict:
     }
 
 
-def load_experiment(dataset_name: str) -> tuple[Path, np.ndarray, dict]:
-    dataset_dir = ROOT_DIR / "output" / dataset_name
-    X = pd.read_csv(
-        dataset_dir
-        / "preprocessing"
-        / f"{dataset_name}_features_scaled_encoded.csv"
-    ).to_numpy(dtype=float)
-    label_files = {
-        "K-Means": dataset_dir / "kmeans" / f"{dataset_name}_kmeans_clustered.csv",
-        "FCM": dataset_dir / "fcm" / f"{dataset_name}_fcm_clustered.csv",
-        "DBSCAN": dataset_dir / "dbscan" / f"{dataset_name}_dbscan_clustered.csv",
-    }
-    label_columns = {
-        "K-Means": "Cluster_KMeans",
-        "FCM": "Cluster_FCM",
-        "DBSCAN": "Cluster_DBSCAN",
-    }
-    labels = {
-        algorithm: pd.read_csv(path)[label_columns[algorithm]].to_numpy()
-        for algorithm, path in label_files.items()
-    }
-    if any(len(cluster_labels) != len(X) for cluster_labels in labels.values()):
-        raise ValueError(
-            f"Jumlah baris label clustering {dataset_name} berbeda dari matriks fitur."
-        )
-    return dataset_dir, X, labels
+def load_experiment(ds):
+    d = ROOT_DIR / "output" / ds
+    Xdf = pd.read_csv(d / "preprocessing" / f"{ds}_features_scaled_encoded.csv")
+    spaces = {"encoded": ("Seluruh fitur terstandar + one-hot (ruang K-Means/FCM)", Xdf.to_numpy(float))}
+    if ds == "mall":
+        spaces["numerik"] = ("Fitur numerik saja (ruang DBSCAN)", Xdf[MALL_NUMERIC].to_numpy(float))
+    files = {"K-Means": ("kmeans", "Cluster_KMeans"), "FCM": ("fcm", "Cluster_FCM"),
+             "DBSCAN": ("dbscan", "Cluster_DBSCAN")}
+    labels = {a: pd.read_csv(d / f / f"{ds}_{f}_clustered.csv")[c].to_numpy() for a, (f, c) in files.items()}
+    n = len(Xdf)
+    if any(len(v) != n for v in labels.values()):
+        raise ValueError(f"Jumlah baris label {ds} berbeda dari matriks fitur.")
+    return d, spaces, labels
 
 
-def metric_row(
-    dataset_name: str,
-    algorithm: str,
-    labels: np.ndarray,
-    metrics: dict,
-    basis: str,
-    evaluated_count: int,
-    total_count: int,
-    dbscan_noise_count: int,
-) -> dict:
-    non_noise_labels = labels[labels != -1]
-    cluster_ids, cluster_sizes = np.unique(non_noise_labels, return_counts=True)
-    noise_count = dbscan_noise_count if algorithm == "DBSCAN" else 0
+def validity(labels):
+    n = len(labels)
+    nn = labels[labels != -1]
+    sizes = np.unique(nn, return_counts=True)[1] if len(nn) else np.array([0])
+    noise_pct = float((labels == -1).mean() * 100)
+    k = len(sizes) if len(nn) else 0
+    ok = k >= MIN_CLUSTERS and noise_pct <= MAX_NOISE_PCT and sizes.min() >= n * MIN_CLUSTER_PCT / 100
+    reasons = []
+    if k < MIN_CLUSTERS:
+        reasons.append("kurang dari 2 cluster")
+    if noise_pct > MAX_NOISE_PCT:
+        reasons.append(f"noise {noise_pct:.1f}% > {MAX_NOISE_PCT:g}%")
+    if k and sizes.min() < n * MIN_CLUSTER_PCT / 100:
+        reasons.append(f"cluster terkecil {sizes.min()} baris (< {MIN_CLUSTER_PCT:g}% data)")
+    return bool(ok), "; ".join(reasons) if reasons else "-"
+
+
+def metric_row(ds, algo, labels_full, mask, X, basis, space_label):
+    labels = labels_full[mask]
+    valid, reason = validity(labels_full)
+    ids, sizes = np.unique(labels[labels != -1], return_counts=True)
+    noise = int((labels_full == -1).sum())
     return {
-        "Dataset": "Mall Customers" if dataset_name == "mall" else "Heart Disease",
-        "Algorithm": algorithm,
-        "Basis_Evaluasi": basis,
-        "Jumlah_Data_Evaluasi": evaluated_count,
-        "Jumlah_Cluster": len(cluster_ids),
-        "Cluster_Sizes": ",".join(map(str, cluster_sizes.tolist())),
-        "Noise_Count": noise_count,
-        "Noise_Percentage": noise_count / total_count if algorithm == "DBSCAN" else 0.0,
-        **metrics,
+        "Dataset": title_of(ds), "Algorithm": algo, "Ruang_Fitur": space_label, "Basis_Evaluasi": basis,
+        "Jumlah_Data_Evaluasi": int(mask.sum()), "Jumlah_Cluster": len(ids),
+        "Cluster_Sizes": ",".join(map(str, sizes.tolist())), "Noise_Count": noise,
+        "Noise_Percentage": noise / len(labels_full), "Valid": valid, "Catatan_Validitas": reason,
+        **compute_metrics(X[mask][labels != -1], labels[labels != -1]),
     }
 
 
-def build_comparison_tables(dataset_name: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    dataset_dir, X, labels = load_experiment(dataset_name)
-    dbscan_labels = labels["DBSCAN"]
-    non_noise = dbscan_labels != -1
+def build_tables(ds, X, space_label, labels):
+    db = labels["DBSCAN"]
+    non_noise = db != -1
     if not non_noise.any():
-        raise ValueError(f"DBSCAN menandai seluruh data {dataset_name} sebagai noise.")
-    if dataset_name == "heart" and int(non_noise.sum()) != 779:
-        raise ValueError(
-            "DBSCAN Heart harus menghasilkan tepat 779 baris non-noise "
-            f"untuk konfigurasi awal; ditemukan {int(non_noise.sum())}."
-        )
-
-    main_rows = []
-    fair_rows = []
-    for algorithm in ALGORITHMS:
-        algorithm_labels = labels[algorithm]
-        if algorithm == "DBSCAN":
-            main_mask = non_noise
-            main_basis = "Data non-noise DBSCAN"
-        else:
-            main_mask = np.ones(len(X), dtype=bool)
-            main_basis = "Seluruh data"
-
-        main_rows.append(
-            metric_row(
-                dataset_name,
-                algorithm,
-                algorithm_labels[main_mask],
-                compute_metrics(X[main_mask], algorithm_labels[main_mask]),
-                main_basis,
-                int(main_mask.sum()),
-                len(X),
-                int(np.sum(dbscan_labels == -1)),
-            )
-        )
-        fair_rows.append(
-            metric_row(
-                dataset_name,
-                algorithm,
-                algorithm_labels[non_noise],
-                compute_metrics(X[non_noise], algorithm_labels[non_noise]),
-                "Subset baris non-noise DBSCAN yang sama",
-                int(non_noise.sum()),
-                len(X),
-                int(np.sum(dbscan_labels == -1)),
-            )
-        )
-
-    main = pd.DataFrame(main_rows)
-    fair = pd.DataFrame(fair_rows)
-
-    for algorithm, folder in [("K-Means", "kmeans"), ("FCM", "fcm")]:
-        final_path = dataset_dir / folder / f"{dataset_name}_{folder}_final_metrics.csv"
-        stored = pd.read_csv(final_path).iloc[0]
-        calculated = main.loc[main["Algorithm"] == algorithm].iloc[0]
-        for metric in METRICS:
-            if not np.isclose(
-                float(calculated[metric]), float(stored[metric]), atol=1e-10
-            ):
-                raise ValueError(
-                    f"Metrik {algorithm} {dataset_name} pada comparison tidak sama "
-                    "dengan hasil eksperimen tersimpan."
-                )
-    return main, fair
+        raise ValueError(f"DBSCAN menandai seluruh data {ds} sebagai noise.")
+    main_rows, fair_rows = [], []
+    for algo in ALGORITHMS:
+        lab = labels[algo]
+        # metrik dihitung pada data non-noise (label -1 dikeluarkan) untuk DBSCAN
+        mask_main = non_noise if algo == "DBSCAN" else np.ones(len(X), bool)
+        basis_main = "Data non-noise DBSCAN" if algo == "DBSCAN" else "Seluruh data"
+        main_rows.append(metric_row(ds, algo, lab, mask_main, X, basis_main, space_label))
+        fair_rows.append(metric_row(ds, algo, lab, non_noise, X, "Subset baris non-noise DBSCAN yang sama", space_label))
+    return pd.DataFrame(main_rows), pd.DataFrame(fair_rows)
 
 
-def build_cluster_counts(dataset_name: str) -> pd.DataFrame:
-    dataset_dir, _, labels = load_experiment(dataset_name)
+def verify_stored(ds, dataset_dir, main):
+    for algo, folder in [("K-Means", "kmeans"), ("FCM", "fcm")]:
+        stored = pd.read_csv(dataset_dir / folder / f"{ds}_{folder}_final_metrics.csv").iloc[0]
+        calc = main.loc[main["Algorithm"] == algo].iloc[0]
+        for m in METRICS:
+            if not np.isclose(float(calc[m]), float(stored[m]), atol=1e-8):
+                raise ValueError(f"Metrik {algo} {ds} berbeda dari hasil eksperimen tersimpan.")
+
+
+def build_counts(ds, labels):
     rows = []
-    for algorithm in ALGORITHMS:
-        values = labels[algorithm]
-        cluster_ids, sizes = np.unique(values[values != -1], return_counts=True)
-        noise_count = int(np.sum(values == -1)) if algorithm == "DBSCAN" else 0
-        rows.append(
-            {
-                "Dataset": "Mall Customers"
-                if dataset_name == "mall"
-                else "Heart Disease",
-                "Algorithm": algorithm,
-                "Jumlah_Cluster": len(cluster_ids),
-                "Cluster_Sizes": ",".join(map(str, sizes.tolist())),
-                "Jumlah_Noise": noise_count,
-                "Persentase_Noise": noise_count / len(values),
-                "Jumlah_Data": len(values),
-            }
-        )
+    for algo in ALGORITHMS:
+        v = labels[algo]
+        ids, sizes = np.unique(v[v != -1], return_counts=True)
+        noise = int((v == -1).sum())
+        rows.append({"Dataset": title_of(ds), "Algorithm": algo, "Jumlah_Cluster": len(ids),
+                     "Cluster_Sizes": ",".join(map(str, sizes.tolist())), "Jumlah_Noise": noise,
+                     "Persentase_Noise": noise / len(v), "Jumlah_Data": len(v)})
     return pd.DataFrame(rows)
 
 
-def save_metric_plot(comparison: pd.DataFrame, output_path: Path, title: str) -> None:
-    positions = np.arange(len(comparison))
-    labels = [
-        f"{row['Algorithm']}\n(n={row['Jumlah_Data_Evaluasi']})"
-        for _, row in comparison.iterrows()
-    ]
-    metric_titles = {
-        "Silhouette": "Silhouette (lebih tinggi lebih baik)",
-        "Davies_Bouldin": "Davies-Bouldin (lebih rendah lebih baik)",
-        "Calinski_Harabasz": "Calinski-Harabasz (lebih tinggi lebih baik)",
-    }
-    colors = ["#4C72B0", "#55A868", "#C44E52"]
-    fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
-    for axis, metric in zip(axes, METRICS):
-        axis.bar(positions, comparison[metric], color=colors)
-        axis.set_xticks(positions, labels)
-        axis.set_title(metric_titles[metric])
-        axis.grid(True, axis="y", alpha=0.25)
-    fig.suptitle(title)
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
+def save_metric_plot(df, path, title):
+    pos = np.arange(len(df))
+    names = [f"{r['Algorithm']}{'' if r['Valid'] else ' (tidak valid)'}\n(n={r['Jumlah_Data_Evaluasi']})"
+             for _, r in df.iterrows()]
+    titles = {"Silhouette": "Silhouette (lebih tinggi lebih baik)",
+              "Davies_Bouldin": "Davies-Bouldin (lebih rendah lebih baik)",
+              "Calinski_Harabasz": "Calinski-Harabasz (lebih tinggi lebih baik)"}
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8))
+    for ax, m in zip(axes, METRICS):
+        bars = ax.bar(pos, df[m], color=[COLORS[a] for a in df["Algorithm"]])
+        for b, (_, r) in zip(bars, df.iterrows()):
+            if not r["Valid"]:
+                b.set_hatch("//"); b.set_alpha(0.6)
+        ax.set_xticks(pos, names, fontsize=9); ax.set_title(titles[m]); ax.grid(axis="y", alpha=0.25)
+    fig.suptitle(title); fig.tight_layout(); fig.savefig(path, dpi=300); plt.close(fig)
 
 
-def save_cluster_count_plot(counts: pd.DataFrame, output_path: Path, title: str) -> None:
-    positions = np.arange(len(counts))
-    fig, axis = plt.subplots(figsize=(8, 5))
-    bars = axis.bar(
-        positions,
-        counts["Jumlah_Cluster"],
-        color=["#4C72B0", "#55A868", "#C44E52"],
-        label="Cluster non-noise",
-    )
-    axis.set_xticks(positions, counts["Algorithm"])
-    axis.set_ylabel("Jumlah cluster")
-    axis.set_title(title)
-    axis.grid(True, axis="y", alpha=0.25)
-    for bar, row in zip(bars, counts.itertuples()):
-        axis.text(
-            bar.get_x() + bar.get_width() / 2,
-            bar.get_height(),
-            f"noise={row.Jumlah_Noise} ({row.Persentase_Noise * 100:.2f}%)",
-            ha="center",
-            va="bottom",
-            fontsize=9,
-        )
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
+def save_count_plot(counts, path, title):
+    pos = np.arange(len(counts))
+    fig, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.bar(pos, counts["Jumlah_Cluster"], color=[COLORS[a] for a in counts["Algorithm"]])
+    ax.set_xticks(pos, counts["Algorithm"]); ax.set_ylabel("Jumlah cluster"); ax.set_title(title)
+    ax.grid(axis="y", alpha=0.25)
+    for b, r in zip(bars, counts.itertuples()):
+        ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
+                f"noise={r.Jumlah_Noise} ({r.Persentase_Noise * 100:.2f}%)", ha="center", va="bottom", fontsize=9)
+    fig.tight_layout(); fig.savefig(path, dpi=300); plt.close(fig)
 
 
-def fmt(value: float) -> str:
-    return "N/A" if pd.isna(value) else f"{float(value):.6f}"
+def fmt(v):
+    return "N/A" if pd.isna(v) else f"{float(v):.6f}"
 
 
-def metric_markdown_table(comparison: pd.DataFrame) -> list[str]:
-    lines = [
-        "| Algoritma | Jumlah cluster | Ukuran cluster | Noise | Noise (%) | Data dievaluasi | Silhouette | Davies-Bouldin | Calinski-Harabasz |",
-        "|---|---:|---|---:|---:|---:|---:|---:|---:|",
-    ]
-    for _, row in comparison.iterrows():
-        lines.append(
-            f"| {row['Algorithm']} | {row['Jumlah_Cluster']} | {row['Cluster_Sizes']} | "
-            f"{row['Noise_Count']} | {row['Noise_Percentage'] * 100:.2f}% | "
-            f"{row['Jumlah_Data_Evaluasi']} | {fmt(row['Silhouette'])} | "
-            f"{fmt(row['Davies_Bouldin'])} | {fmt(row['Calinski_Harabasz'])} |"
-        )
+def md_table(df):
+    lines = ["| Algoritma | Valid | Jumlah cluster | Ukuran cluster | Noise (%) | Data dievaluasi | Silhouette | Davies-Bouldin | Calinski-Harabasz |",
+             "|---|---|---:|---|---:|---:|---:|---:|---:|"]
+    for _, r in df.iterrows():
+        lines.append(f"| {r['Algorithm']} | {'Ya' if r['Valid'] else 'Tidak'} | {r['Jumlah_Cluster']} | {r['Cluster_Sizes']} | "
+                     f"{r['Noise_Percentage'] * 100:.2f}% | {r['Jumlah_Data_Evaluasi']} | {fmt(r['Silhouette'])} | "
+                     f"{fmt(r['Davies_Bouldin'])} | {fmt(r['Calinski_Harabasz'])} |")
     return lines
 
 
-def metric_winners(comparison: pd.DataFrame) -> list[str]:
-    directions = {
-        "Silhouette": "max",
-        "Davies_Bouldin": "min",
-        "Calinski_Harabasz": "max",
-    }
-    lines = []
-    for metric, direction in directions.items():
-        values = comparison[metric]
-        best = values.max() if direction == "max" else values.min()
-        winners = comparison.loc[np.isclose(values, best), "Algorithm"].tolist()
-        lines.append(
-            f"- {metric}: {' / '.join(winners)} ({fmt(best)}; "
-            f"{'lebih tinggi' if direction == 'max' else 'lebih rendah'} lebih baik)."
-        )
-    return lines
+def winners(df):
+    """Pemenang hanya dihitung di antara metode yang valid."""
+    pool = df[df["Valid"]]
+    out, win = [], {}
+    for m, d in DIRECTIONS.items():
+        if pool.empty:
+            continue
+        best = pool[m].max() if d == "max" else pool[m].min()
+        names = pool.loc[np.isclose(pool[m], best), "Algorithm"].tolist()
+        for a in names:
+            win[a] = win.get(a, 0) + 1
+        out.append(f"- {m}: {' / '.join(names)} ({fmt(best)}; {'lebih tinggi' if d == 'max' else 'lebih rendah'} lebih baik).")
+    return out, win
 
 
-def build_analysis(
-    dataset_name: str, main: pd.DataFrame, fair: pd.DataFrame, counts: pd.DataFrame
-) -> str:
-    title = "Mall Customers" if dataset_name == "mall" else "Heart Disease"
-    main_index = main.set_index("Algorithm")
-    fair_index = fair.set_index("Algorithm")
-    dbscan = main_index.loc["DBSCAN"]
-    lines = [
-        f"## {title}",
-        "",
-        "### Perbandingan utama (cakupan evaluasi masing-masing eksperimen)",
-        "",
-        *metric_markdown_table(main),
-        "",
-        "K-Means dan FCM dievaluasi pada seluruh data. Metrik DBSCAN dihitung hanya pada "
-        "baris non-noise (label -1 dikeluarkan), sehingga tabel utama tidak memiliki cakupan "
-        "observasi yang sama dan metrik DBSCAN tidak boleh dibandingkan langsung tanpa konteks.",
-        "",
-        "### Perbandingan tambahan yang adil pada subset non-noise DBSCAN",
-        "",
-        *metric_markdown_table(fair),
-        "",
-        f"Semua algoritma pada tabel ini dievaluasi pada {int(fair['Jumlah_Data_Evaluasi'].iloc[0])} "
-        "baris observasi yang sama, yaitu baris non-noise DBSCAN. K-Means dan FCM tidak dilatih "
-        "ulang; label yang telah tersimpan hanya digunakan pada subset tersebut. Tabel tambahan "
-        "ini tidak menggantikan evaluasi utama.",
-        "",
-        "### Jumlah cluster dan noise",
-        "",
-        "| Algoritma | Jumlah cluster | Ukuran cluster | Noise | Noise (%) |",
-        "|---|---:|---|---:|---:|",
-    ]
-    for _, row in counts.iterrows():
-        lines.append(
-            f"| {row['Algorithm']} | {row['Jumlah_Cluster']} | {row['Cluster_Sizes']} | "
-            f"{row['Jumlah_Noise']} | {row['Persentase_Noise'] * 100:.2f}% |"
-        )
-    lines.extend(
-        [
-            "",
-            "### Hasil dan interpretasi metrik",
-            "",
-            "- Silhouette: semakin tinggi semakin baik.",
-            "- Davies-Bouldin: semakin rendah semakin baik.",
-            "- Calinski-Harabasz: semakin tinggi semakin baik.",
-            "",
-            "Pemenang numerik pada tabel utama (cakupan DBSCAN berbeda):",
-            *metric_winners(main),
-            "",
-            "Pemenang pada perbandingan tambahan dengan baris observasi yang sama:",
-            *metric_winners(fair),
-            "",
-            "Pemenang pada tabel utama harus ditafsirkan hati-hati karena metrik DBSCAN mengecualikan "
-            "noise sedangkan K-Means/FCM memakai seluruh data. Nilai metrik internal tidak mengukur "
-            "accuracy dan hasilnya juga bergantung pada representasi fitur serta jumlah observasi "
-            "yang dievaluasi.",
-            "",
-        ]
-    )
-    if dataset_name == "heart":
-        lines.extend(
-            [
-                "### Konfigurasi DBSCAN Heart",
-                "",
-                "- DBSCAN menggunakan matriks fitur preprocessing yang tersedia, tanpa preprocessing ulang.",
-                "- Parameter: eps=2.0, min_samples=5, metric=Euclidean.",
-                f"- Hasil: {int(dbscan['Jumlah_Cluster'])} cluster, ukuran {dbscan['Cluster_Sizes']}; "
-                f"{int(dbscan['Noise_Count'])} noise dari 918 baris "
-                f"({dbscan['Noise_Percentage'] * 100:.2f}%).",
-                "- Metrik DBSCAN dihitung pada 779 baris non-noise saja.",
-                "- Satu cluster hanya beranggotakan satu baris, sehingga struktur cluster DBSCAN "
-                "perlu ditafsirkan dengan hati-hati. Banyaknya noise yang lebih sedikit tidak "
-                "dengan sendirinya menunjukkan kualitas clustering yang lebih baik.",
-                "- PCA digunakan hanya untuk visualisasi DBSCAN, bukan sebagai input clustering.",
-                "",
-            ]
-        )
+def build_analysis(ds, dataset_dir, space_results, counts, labels):
+    title = title_of(ds)
+    dbm = pd.read_csv(dataset_dir / "dbscan" / f"{ds}_dbscan_final_metrics.csv").iloc[0]
+    lines = [f"## {title}", "", "### Konfigurasi DBSCAN", "",
+             f"- Fitur: {dbm['Fitur_Digunakan'] if 'Fitur_Digunakan' in dbm else 'seluruh fitur terstandar + one-hot'}",
+             f"- Parameter: eps={dbm['Epsilon']:g}, min_samples={int(dbm['Min_Samples'])}",
+             f"- Kriteria pemilihan: {dbm['Selection_Criteria']}",
+             f"- Status: {dbm['Status_Kriteria']}", ""]
+    for key, (space_label, main, fair) in space_results.items():
+        lines += [f"### Ruang fitur: {space_label}", "", "**Cakupan evaluasi masing-masing metode**", "", *md_table(main), "",
+                  "K-Means dan FCM dievaluasi pada seluruh data; metrik DBSCAN hanya pada baris non-noise.", "",
+                  "**Perbandingan pada subset non-noise DBSCAN yang sama**", "", *md_table(fair), ""]
+        w_main, win_main = winners(main)
+        w_fair, win_fair = winners(fair)
+        lines += ["Pemenang metrik (hanya di antara metode yang valid), cakupan masing-masing:", *w_main, "",
+                  "Pemenang metrik pada subset yang sama:", *w_fair, ""]
+        invalid = main[~main["Valid"]]
+        for _, r in invalid.iterrows():
+            lines.append(f"Catatan: {r['Algorithm']} ditandai TIDAK VALID ({r['Catatan_Validitas']}), "
+                         "sehingga nilai metriknya tidak dihitung sebagai pemenang dan tidak boleh ditafsirkan sebagai kualitas yang baik.")
+        lines.append("")
+    # jumlah noise/cluster
+    lines += ["### Jumlah cluster dan noise", "", "| Algoritma | Jumlah cluster | Ukuran cluster | Noise | Noise (%) |", "|---|---:|---|---:|---:|"]
+    for _, r in counts.iterrows():
+        lines.append(f"| {r['Algorithm']} | {r['Jumlah_Cluster']} | {r['Cluster_Sizes']} | {r['Jumlah_Noise']} | {r['Persentase_Noise'] * 100:.2f}% |")
+    # kesamaan hasil antar metode
+    ari = {f"{a} vs {b}": adjusted_rand_score(labels[a], labels[b])
+           for a, b in [("K-Means", "FCM"), ("K-Means", "DBSCAN"), ("FCM", "DBSCAN")]}
+    lines += ["", "### Kemiripan label antar metode (Adjusted Rand Index)", ""]
+    lines += [f"- {k}: {v:.3f}" for k, v in ari.items()]
+    lines += ["", "Catatan: Silhouette, Davies-Bouldin, dan Calinski-Harabasz adalah metrik internal, bukan accuracy; "
+              "nilainya bergantung pada ruang fitur dan data yang dievaluasi. ARI untuk DBSCAN menganggap label noise (-1) sebagai satu kelompok.", ""]
     return "\n".join(lines)
 
 
-def run() -> None:
+def run():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    analyses = []
-    for dataset_name in ["mall", "heart"]:
-        main, fair = build_comparison_tables(dataset_name)
-        counts = build_cluster_counts(dataset_name)
-
-        main.to_csv(
-            OUTPUT_DIR / f"{dataset_name}_clustering_comparison.csv", index=False
-        )
-        fair.to_csv(
-            OUTPUT_DIR / f"{dataset_name}_clustering_comparison_non_noise.csv",
-            index=False,
-        )
-        counts.to_csv(
-            OUTPUT_DIR / f"{dataset_name}_cluster_noise_comparison.csv", index=False
-        )
-        save_metric_plot(
-            main,
-            OUTPUT_DIR / f"{dataset_name}_clustering_comparison.png",
-            f"{dataset_name.title()} - evaluasi utama",
-        )
-        save_metric_plot(
-            fair,
-            OUTPUT_DIR / f"{dataset_name}_clustering_comparison_non_noise.png",
-            f"{dataset_name.title()} - subset non-noise DBSCAN yang sama",
-        )
-        save_cluster_count_plot(
-            counts,
-            OUTPUT_DIR / f"{dataset_name}_cluster_noise_comparison.png",
-            f"{dataset_name.title()} - jumlah cluster dan noise",
-        )
-
-        analysis = build_analysis(dataset_name, main, fair, counts)
-        (OUTPUT_DIR / f"{dataset_name}_analysis_results.md").write_text(
-            f"# Analisis Clustering - {analysis}", encoding="utf-8"
-        )
+    analyses, summary_rows = [], []
+    for ds in ["mall", "heart"]:
+        dataset_dir, spaces, labels = load_experiment(ds)
+        counts = build_counts(ds, labels)
+        counts.to_csv(OUTPUT_DIR / f"{ds}_cluster_noise_comparison.csv", index=False)
+        save_count_plot(counts, OUTPUT_DIR / f"{ds}_cluster_noise_comparison.png", f"{ds.title()} - jumlah cluster dan noise")
+        space_results = {}
+        for key, (space_label, X) in spaces.items():
+            main, fair = build_tables(ds, X, space_label, labels)
+            if key == "encoded":
+                verify_stored(ds, dataset_dir, main)
+            suffix = "" if key == "encoded" else f"_{key}"
+            main.to_csv(OUTPUT_DIR / f"{ds}_clustering_comparison{suffix}.csv", index=False)
+            fair.to_csv(OUTPUT_DIR / f"{ds}_clustering_comparison_non_noise{suffix}.csv", index=False)
+            save_metric_plot(main, OUTPUT_DIR / f"{ds}_clustering_comparison{suffix}.png", f"{ds.title()} - evaluasi utama ({key})")
+            save_metric_plot(fair, OUTPUT_DIR / f"{ds}_clustering_comparison_non_noise{suffix}.png",
+                             f"{ds.title()} - subset non-noise DBSCAN yang sama ({key})")
+            space_results[key] = (space_label, main, fair)
+            _, win = winners(main)
+            for a in ALGORITHMS:
+                summary_rows.append({"Dataset": title_of(ds), "Ruang_Fitur": space_label, "Algorithm": a,
+                                     "Valid": bool(main.loc[main["Algorithm"] == a, "Valid"].iloc[0]),
+                                     "Jumlah_Kemenangan_Metrik(dari_3)": win.get(a, 0)})
+        analysis = build_analysis(ds, dataset_dir, space_results, counts, labels)
+        (OUTPUT_DIR / f"{ds}_analysis_results.md").write_text(f"# Analisis Clustering - {analysis}", encoding="utf-8")
         analyses.append(analysis)
-
-    (OUTPUT_DIR / "analysis_results.md").write_text(
-        "# Perbandingan Hasil Clustering\n\n"
-        + "\n".join(analyses)
-        + "\n",
-        encoding="utf-8",
-    )
-    print("Comparison K-Means, FCM, dan DBSCAN selesai.")
-    print("Output:", OUTPUT_DIR)
+    summ = pd.DataFrame(summary_rows)
+    summ.to_csv(OUTPUT_DIR / "ringkasan_kemenangan_metrik.csv", index=False)
+    (OUTPUT_DIR / "analysis_results.md").write_text("# Perbandingan Hasil Clustering\n\n" + "\n".join(analyses) + "\n", encoding="utf-8")
+    print(summ.to_string(index=False))
+    print("Comparison K-Means, FCM, dan DBSCAN selesai. Output:", OUTPUT_DIR)
 
 
 if __name__ == "__main__":

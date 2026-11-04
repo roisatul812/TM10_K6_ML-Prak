@@ -1,4 +1,4 @@
-Dataset,Algorithm,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Silhouette,Davies_Bouldin,Calinski_Harabasz
-Heart Disease,K-Means,Subset baris non-noise DBSCAN yang sama,779,2,"375,404",0,0.0,0.19662635692185043,1.85279457375916,216.13562234509934
-Heart Disease,FCM,Subset baris non-noise DBSCAN yang sama,779,2,"367,412",0,0.0,0.19680763570662532,1.8510838087924586,215.9584316523044
-Heart Disease,DBSCAN,Subset baris non-noise DBSCAN yang sama,779,2,"778,1",139,0.1514161220043573,0.0956885009413746,0.8092526576461662,1.4694904808230003
+Dataset,Algorithm,Ruang_Fitur,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Valid,Catatan_Validitas,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Heart Disease,K-Means,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,910,2,"462,448",0,0.0,True,-,0.17689287950309565,1.9968567588828763,213.6010135247382
+Heart Disease,FCM,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,910,2,"453,457",0,0.0,True,-,0.17710941635492178,1.9991529303163873,213.34800033709107
+Heart Disease,DBSCAN,Seluruh fitur terstandar + one-hot (ruang K-Means/FCM),Subset baris non-noise DBSCAN yang sama,910,2,"906,4",8,0.008714596949891068,False,cluster terkecil 4 baris (< 5% data),0.3575153083730172,0.8277251733192896,13.811272010546965

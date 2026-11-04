@@ -1,0 +1,4 @@
+Dataset,Algorithm,Ruang_Fitur,Basis_Evaluasi,Jumlah_Data_Evaluasi,Jumlah_Cluster,Cluster_Sizes,Noise_Count,Noise_Percentage,Valid,Catatan_Validitas,Silhouette,Davies_Bouldin,Calinski_Harabasz
+Mall Customers,K-Means,Fitur numerik saja (ruang DBSCAN),Seluruh data,200,4,"65,57,38,40",0,0.0,True,-,0.404668769976132,0.9334598787854882,125.39094838140683
+Mall Customers,FCM,Fitur numerik saja (ruang DBSCAN),Seluruh data,200,4,"35,63,62,40",0,0.0,True,-,0.4023585534189346,0.9217773813537746,123.5322539801697
+Mall Customers,DBSCAN,Fitur numerik saja (ruang DBSCAN),Data non-noise DBSCAN,172,2,"137,35",28,0.14,True,-,0.2730470532970596,1.0204018249036613,54.421388470126566
